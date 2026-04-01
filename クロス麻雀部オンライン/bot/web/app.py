@@ -7,6 +7,19 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "mahjong.db")
 app = Flask(__name__)
 
 
+@app.after_request
+def add_cors_headers(response):
+    allowed = ["https://mj.kyoten-hub.com", "http://localhost:3000"]
+    origin = response.headers.get("Origin", "")
+    if origin in allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "https://mj.kyoten-hub.com"
+    response.headers["Access-Control-Allow-Methods"] = "GET"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
 def get_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
