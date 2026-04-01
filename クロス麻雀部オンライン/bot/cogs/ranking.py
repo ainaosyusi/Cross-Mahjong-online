@@ -6,6 +6,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from database import queries
+from services.timeutil import is_active, INACTIVE_MESSAGE
 
 log = logging.getLogger("ranking")
 
@@ -41,6 +42,9 @@ class RankingCog(commands.Cog):
     async def ranking_command(
         self, interaction: discord.Interaction, period: str = "monthly"
     ):
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
         await self.show_ranking(interaction, period)
 
     async def show_ranking(self, interaction: discord.Interaction, period: str) -> None:
@@ -82,6 +86,9 @@ class RankingCog(commands.Cog):
 
     @app_commands.command(name="mystats", description="自分の成績を表示します")
     async def mystats_command(self, interaction: discord.Interaction):
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
         stats = await queries.get_player_stats(str(interaction.user.id))
 
         if stats is None:

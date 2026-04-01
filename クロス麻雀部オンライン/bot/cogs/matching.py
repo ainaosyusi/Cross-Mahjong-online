@@ -7,6 +7,7 @@ from discord.ext import commands
 import config
 from database import queries
 from services.queue import QueueService
+from services.timeutil import is_active, INACTIVE_MESSAGE
 
 log = logging.getLogger("matching")
 
@@ -56,6 +57,9 @@ class MatchingCog(commands.Cog):
         log.info("募集開始")
 
     async def handle_join(self, interaction: discord.Interaction, entry_type: str) -> None:
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
         user = interaction.user
         if self.queue.is_in_queue(user.id):
             self.queue.remove(user.id)
@@ -71,6 +75,9 @@ class MatchingCog(commands.Cog):
         await self._try_match(interaction.channel)
 
     async def handle_cancel(self, interaction: discord.Interaction) -> None:
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
         user = interaction.user
         if not self.queue.is_in_queue(user.id):
             await interaction.response.send_message("参加登録されていません。", ephemeral=True)

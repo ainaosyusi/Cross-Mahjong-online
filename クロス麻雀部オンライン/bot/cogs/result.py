@@ -8,6 +8,7 @@ from discord.ext import commands
 import config
 from database import queries
 from services.ocr import OCRService
+from services.timeutil import is_active, INACTIVE_MESSAGE
 
 log = logging.getLogger("result")
 
@@ -55,6 +56,9 @@ class ResultCog(commands.Cog):
         if message.channel.id != config.RESULT_CHANNEL_ID:
             return
         if not message.attachments:
+            return
+        if not is_active():
+            await message.reply(INACTIVE_MESSAGE)
             return
 
         # 画像のみ処理
@@ -147,6 +151,9 @@ class ResultCog(commands.Cog):
         player3: discord.Member,
         player4: discord.Member | None = None,
     ):
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
         players = [
             (player1, 1),
             (player2, 2),

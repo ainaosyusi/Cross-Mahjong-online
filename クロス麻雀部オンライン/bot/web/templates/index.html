@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クロス麻雀部オンライン</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 {
+            text-align: center;
+            padding: 30px 0;
+            font-size: 1.8em;
+            color: #e94560;
+        }
+        h2 {
+            margin: 30px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e94560;
+            font-size: 1.3em;
+        }
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 8px 20px;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .tab.active {
+            background: #e94560;
+            border-color: #e94560;
+            color: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #16213e;
+        }
+        th {
+            background: #16213e;
+            color: #e94560;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        td { font-size: 0.9em; }
+        tr:hover { background: #16213e; }
+        .rank-1 { color: #ffd700; font-weight: bold; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+        .match-card {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+            color: #888;
+        }
+        .match-type {
+            background: #0f3460;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        .match-players { font-size: 0.9em; }
+        .match-players span { margin-right: 16px; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .no-data { text-align: center; padding: 40px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🀄 クロス麻雀部オンライン</h1>
+
+        <div class="tab-bar">
+            <div class="tab active" onclick="showTab('ranking')">ランキング</div>
+            <div class="tab" onclick="showTab('recent')">対戦履歴</div>
+        </div>
+
+        <div id="ranking-section">
+            <h2>🏆 総合ランキング</h2>
+            <div id="ranking-content"><div class="loading">読み込み中...</div></div>
+        </div>
+
+        <div id="recent-section" style="display:none;">
+            <h2>📋 最近の対戦</h2>
+            <div id="recent-content"><div class="loading">読み込み中...</div></div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('ranking-section').style.display = tab === 'ranking' ? '' : 'none';
+            document.getElementById('recent-section').style.display = tab === 'recent' ? '' : 'none';
+        }
+
+        async function loadRanking() {
+            const el = document.getElementById('ranking-content');
+            try {
+                const res = await fetch('/api/ranking');
+                const data = await res.json();
+                if (!data.length) { el.innerHTML = '<div class="no-data">まだデータがありません</div>'; return; }
+
+                let html = '<table><tr><th>#</th><th>プレイヤー</th><th>対戦数</th><th>平均順位</th><th>トップ率</th><th>連対率</th><th>総合得点</th></tr>';
+                data.forEach((r, i) => {
+                    const cls = i < 3 ? ` class="rank-${i+1}"` : '';
+                    const medal = ['🥇','🥈','🥉'][i] || (i+1);
+                    html += `<tr><td${cls}>${medal}</td><td>${r.display_name}</td><td>${r.game_count}</td><td>${r.avg_rank}</td><td>${r.top_rate}%</td><td>${r.rentai_rate}%</td><td>${r.total_point}</td></tr>`;
+                });
+                html += '</table>';
+                el.innerHTML = html;
+            } catch(e) { el.innerHTML = '<div class="no-data">データ取得に失敗しました</div>'; }
+        }
+
+        async function loadRecent() {
+            const el = document.getElementById('recent-content');
+            try {
+                const res = await fetch('/api/recent');
+                const data = await res.json();
+                if (!data.length) { el.innerHTML = '<div class="no-data">まだデータがありません</div>'; return; }
+
+                let html = '';
+                data.forEach(m => {
+                    const date = m.finished_at ? new Date(m.finished_at).toLocaleString('ja-JP') : '';
+                    html += `<div class="match-card"><div class="match-header"><span>${date}</span><span class="match-type">${m.match_type}人戦</span></div><div class="match-players">`;
+                    m.players.forEach(p => {
+                        const cls = p.rank <= 3 ? ` class="rank-${p.rank}"` : '';
+                        html += `<span${cls}>${p.rank}位: ${p.name}</span>`;
+                    });
+                    html += '</div></div>';
+                });
+                el.innerHTML = html;
+            } catch(e) { el.innerHTML = '<div class="no-data">データ取得に失敗しました</div>'; }
+        }
+
+        loadRanking();
+        loadRecent();
+    </script>
+</body>
+</html>
