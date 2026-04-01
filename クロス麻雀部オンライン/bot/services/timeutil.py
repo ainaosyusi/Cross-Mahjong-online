@@ -17,4 +17,4 @@ def is_active() -> bool:
     return hour >= config.ACTIVE_START_HOUR or hour < config.ACTIVE_END_HOUR
 
 
-INACTIVE_MESSAGE = "⏳ 受付時間外です（23:00〜6:00）"
+INACTIVE_MESSAGE = "⏳ 受付時間外です（23:00〜4:00）"

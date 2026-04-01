@@ -12,7 +12,7 @@ RANKING_CHANNEL_ID: int = int(os.getenv("RANKING_CHANNEL_ID", "0"))
 
 # 稼働時間（JST）
 ACTIVE_START_HOUR: int = 23   # 23:00 開始
-ACTIVE_END_HOUR: int = 6      # 6:00 終了
+ACTIVE_END_HOUR: int = 4      # 4:00 終了
 TZ_JST = "Asia/Tokyo"
 
 # Matching

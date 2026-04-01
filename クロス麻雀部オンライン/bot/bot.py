@@ -47,7 +47,7 @@ async def on_ready():
             replace_existing=True,
         )
 
-    # 自動締めジョブ（6:00 JST）
+    # 自動締めジョブ（4:00 JST）
     scheduler.add_job(
         daily_close,
         "cron",
