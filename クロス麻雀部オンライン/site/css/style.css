@@ -79,6 +79,18 @@ header {
     font-size: 1.1em;
     color: #a5d6a7;
 }
+.hero-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 32px;
+    background: #2e7d32;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.hero-btn:hover { background: #388e3c; color: #fff; }
 
 /* ========== Sections ========== */
 .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
