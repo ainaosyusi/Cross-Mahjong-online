@@ -1,0 +1,19 @@
+# 秘密情報
+.env
+bot/.env
+
+# データベース
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
