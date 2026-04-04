@@ -66,7 +66,7 @@ async def on_ready():
 
 
 async def daily_close():
-    """6:00 JSTに実行: 本日のサマリーを送信して受付停止"""
+    """4:00 JSTに実行: 本日のサマリーを送信して受付停止"""
     log.info("デイリークローズ開始")
 
     # マッチング停止
@@ -84,6 +84,8 @@ async def daily_close():
             except discord.NotFound:
                 pass
             matching_cog.recruitment_message = None
+        from cogs.matching import _clear_state
+        _clear_state()
 
     # アクティブなグループを解散
     group_cog = bot.get_cog("GroupCog")

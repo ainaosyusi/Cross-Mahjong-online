@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 
 import discord
 from discord import app_commands
@@ -10,6 +12,28 @@ from services.queue import QueueService
 from services.timeutil import is_active, INACTIVE_MESSAGE
 
 log = logging.getLogger("matching")
+
+STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "matching_state.json")
+
+
+def _save_state(message_id: int, channel_id: int) -> None:
+    with open(STATE_FILE, "w") as f:
+        json.dump({"message_id": message_id, "channel_id": channel_id}, f)
+
+
+def _load_state() -> dict | None:
+    try:
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _clear_state() -> None:
+    try:
+        os.remove(STATE_FILE)
+    except FileNotFoundError:
+        pass
 
 
 class MatchingView(discord.ui.View):
@@ -43,6 +67,17 @@ class MatchingCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.bot.add_view(MatchingView(self))
+        # 再起動後に募集メッセージを復元
+        state = _load_state()
+        if state:
+            try:
+                ch = self.bot.get_channel(state["channel_id"])
+                if ch:
+                    self.recruitment_message = await ch.fetch_message(state["message_id"])
+                    log.info("募集メッセージを復元: %s", state["message_id"])
+            except (discord.NotFound, discord.HTTPException):
+                _clear_state()
+                self.recruitment_message = None
 
     async def start_recruitment(self) -> None:
         channel = self.bot.get_channel(config.MATCHING_CHANNEL_ID)
@@ -54,6 +89,7 @@ class MatchingCog(commands.Cog):
         embed = self._build_embed()
         view = MatchingView(self)
         self.recruitment_message = await channel.send(embed=embed, view=view)
+        _save_state(self.recruitment_message.id, channel.id)
         log.info("募集開始")
 
     async def handle_join(self, interaction: discord.Interaction, entry_type: str) -> None:
@@ -151,6 +187,7 @@ class MatchingCog(commands.Cog):
             except discord.NotFound:
                 pass
             self.recruitment_message = None
+        _clear_state()
         await interaction.response.send_message("募集を停止しました。", ephemeral=True)
         log.info("募集停止")
 
