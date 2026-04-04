@@ -63,6 +63,7 @@ class MatchingCog(commands.Cog):
         self.bot = bot
         self.queue = QueueService()
         self.recruitment_message: discord.Message | None = None
+        self.current_part: int = 1
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -79,26 +80,31 @@ class MatchingCog(commands.Cog):
                 _clear_state()
                 self.recruitment_message = None
 
-    async def start_recruitment(self) -> None:
+    async def start_recruitment(self, part: int = 1) -> None:
         channel = self.bot.get_channel(config.MATCHING_CHANNEL_ID)
         if channel is None:
             log.error("マッチングチャンネルが見つかりません: %s", config.MATCHING_CHANNEL_ID)
             return
 
         self.queue.clear()
+        self.current_part = part
         embed = self._build_embed()
         view = MatchingView(self)
         self.recruitment_message = await channel.send(embed=embed, view=view)
         _save_state(self.recruitment_message.id, channel.id)
-        log.info("募集開始")
+        log.info("募集開始（%d部）", part)
 
         # アナウンスチャンネルに通知
         announce_ch = self.bot.get_channel(config.ANNOUNCE_CHANNEL_ID)
         if announce_ch:
+            if part == 1:
+                time_range = "20:00〜24:00"
+            else:
+                time_range = "0:00〜4:00"
             embed = discord.Embed(
-                title="🀄 本日の麻雀部が開催されました！",
+                title=f"🀄 麻雀部 第{part}部 開催！",
                 description=(
-                    "**23:00〜4:00** まで対戦できます。\n\n"
+                    f"**{time_range}** まで対戦できます。\n\n"
                     f"<#{config.MATCHING_CHANNEL_ID}> で参加ボタンを押してください。\n\n"
                     "📊 [成績ダッシュボード](https://mj.kyoten-hub.com)"
                 ),
@@ -167,8 +173,9 @@ class MatchingCog(commands.Cog):
             self.recruitment_message = None
 
     def _build_embed(self) -> discord.Embed:
+        part_label = f"第{self.current_part}部" if hasattr(self, "current_part") else ""
         embed = discord.Embed(
-            title="🀄 本日の麻雀部 開催中！",
+            title=f"🀄 麻雀部 {part_label} 開催中！",
             color=discord.Color.green(),
         )
         embed.add_field(

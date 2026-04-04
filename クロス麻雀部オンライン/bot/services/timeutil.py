@@ -11,10 +11,10 @@ def now_jst() -> datetime:
 
 
 def is_active() -> bool:
-    """23:00〜翌6:00 の間は True"""
+    """20:00〜翌4:00 の間は True"""
     hour = now_jst().hour
-    # 23時以降 or 6時より前
+    # 20時以降 or 4時より前
     return hour >= config.ACTIVE_START_HOUR or hour < config.ACTIVE_END_HOUR
 
 
-INACTIVE_MESSAGE = "⏳ 受付時間外です（23:00〜4:00）"
+INACTIVE_MESSAGE = "⏳ 受付時間外です（1部 20:00〜24:00 / 2部 0:00〜4:00）"

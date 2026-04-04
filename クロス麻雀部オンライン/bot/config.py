@@ -12,13 +12,13 @@ RANKING_CHANNEL_ID: int = int(os.getenv("RANKING_CHANNEL_ID", "0"))
 ANNOUNCE_CHANNEL_ID: int = int(os.getenv("ANNOUNCE_CHANNEL_ID", "0"))
 
 # 稼働時間（JST）
-ACTIVE_START_HOUR: int = 23   # 23:00 開始
+ACTIVE_START_HOUR: int = 20   # 20:00 開始
 ACTIVE_END_HOUR: int = 4      # 4:00 終了
 TZ_JST = "Asia/Tokyo"
 
-# Matching
-MATCH_START_HOUR: int = 23
-MATCH_START_MINUTE: int = 0
+# Matching（2部制）
+MATCH_PART1_HOUR: int = 20    # 1部: 20:00 開始
+MATCH_PART2_HOUR: int = 0     # 2部: 0:00 開始
 MATCH_TYPE_3: int = 3
 MATCH_TYPE_4: int = 4
 

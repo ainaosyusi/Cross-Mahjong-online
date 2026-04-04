@@ -35,16 +35,28 @@ async def on_ready():
     await bot.load_extension("cogs.result")
     await bot.load_extension("cogs.ranking")
 
-    # 定時募集ジョブ登録（23:00 JST）
+    # 2部制の募集ジョブ登録
     matching_cog = bot.get_cog("MatchingCog")
     if matching_cog:
+        # 1部: 20:00 JST
         scheduler.add_job(
             matching_cog.start_recruitment,
             "cron",
-            hour=config.MATCH_START_HOUR,
-            minute=config.MATCH_START_MINUTE,
-            id="daily_recruitment",
+            hour=config.MATCH_PART1_HOUR,
+            minute=0,
+            id="recruitment_part1",
             replace_existing=True,
+            kwargs={"part": 1},
+        )
+        # 2部: 0:00 JST
+        scheduler.add_job(
+            matching_cog.start_recruitment,
+            "cron",
+            hour=config.MATCH_PART2_HOUR,
+            minute=0,
+            id="recruitment_part2",
+            replace_existing=True,
+            kwargs={"part": 2},
         )
 
     # 自動締めジョブ（4:00 JST）

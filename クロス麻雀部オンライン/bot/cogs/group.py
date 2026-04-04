@@ -91,6 +91,11 @@ class GroupCog(commands.Cog):
             value="部屋番号を共有してゲームを開始してください。",
             inline=False,
         )
+        embed.add_field(
+            name="📸 対戦後のお願い",
+            value=f"対戦が終わったら <#{config.RESULT_CHANNEL_ID}> にスクリーンショットを投稿するか、`/result` コマンドで結果を入力してください。",
+            inline=False,
+        )
 
         view = GroupView(self, match_id)
         await thread.send(content=mentions, embed=embed, view=view)
