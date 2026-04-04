@@ -204,8 +204,9 @@ class MatchingCog(commands.Cog):
     @app_commands.command(name="start_matching", description="手動で募集を開始します")
     @app_commands.checks.has_permissions(administrator=True)
     async def start_matching_command(self, interaction: discord.Interaction):
-        await interaction.response.send_message("募集を開始します。", ephemeral=True)
-        await self.start_recruitment()
+        part = self._detect_current_part()
+        await interaction.response.send_message(f"第{part}部の募集を開始します。", ephemeral=True)
+        await self.start_recruitment(part=part)
 
     @app_commands.command(name="stop_matching", description="募集を停止します")
     @app_commands.checks.has_permissions(administrator=True)
