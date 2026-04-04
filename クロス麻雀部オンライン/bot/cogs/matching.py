@@ -16,9 +16,9 @@ log = logging.getLogger("matching")
 STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "matching_state.json")
 
 
-def _save_state(message_id: int, channel_id: int) -> None:
+def _save_state(message_id: int, channel_id: int, part: int = 1) -> None:
     with open(STATE_FILE, "w") as f:
-        json.dump({"message_id": message_id, "channel_id": channel_id}, f)
+        json.dump({"message_id": message_id, "channel_id": channel_id, "part": part}, f)
 
 
 def _load_state() -> dict | None:
@@ -75,10 +75,23 @@ class MatchingCog(commands.Cog):
                 ch = self.bot.get_channel(state["channel_id"])
                 if ch:
                     self.recruitment_message = await ch.fetch_message(state["message_id"])
-                    log.info("募集メッセージを復元: %s", state["message_id"])
+                    self.current_part = state.get("part", self._detect_current_part())
+                    log.info("募集メッセージを復元: %s（%d部）", state["message_id"], self.current_part)
             except (discord.NotFound, discord.HTTPException):
                 _clear_state()
                 self.recruitment_message = None
+
+        # 稼働時間内なのに募集メッセージがない場合、自動で募集開始
+        if self.recruitment_message is None and is_active():
+            part = self._detect_current_part()
+            log.info("稼働時間内のため募集を自動開始（%d部）", part)
+            await self.start_recruitment(part=part)
+
+    @staticmethod
+    def _detect_current_part() -> int:
+        from services.timeutil import now_jst
+        hour = now_jst().hour
+        return 2 if hour < config.ACTIVE_END_HOUR else 1
 
     async def start_recruitment(self, part: int = 1) -> None:
         channel = self.bot.get_channel(config.MATCHING_CHANNEL_ID)
@@ -91,7 +104,7 @@ class MatchingCog(commands.Cog):
         embed = self._build_embed()
         view = MatchingView(self)
         self.recruitment_message = await channel.send(embed=embed, view=view)
-        _save_state(self.recruitment_message.id, channel.id)
+        _save_state(self.recruitment_message.id, channel.id, part)
         log.info("募集開始（%d部）", part)
 
         # アナウンスチャンネルに通知
