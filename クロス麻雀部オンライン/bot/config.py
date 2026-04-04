@@ -9,6 +9,7 @@ GUILD_ID: int = int(os.getenv("GUILD_ID", "0"))
 MATCHING_CHANNEL_ID: int = int(os.getenv("MATCHING_CHANNEL_ID", "0"))
 RESULT_CHANNEL_ID: int = int(os.getenv("RESULT_CHANNEL_ID", "0"))
 RANKING_CHANNEL_ID: int = int(os.getenv("RANKING_CHANNEL_ID", "0"))
+ANNOUNCE_CHANNEL_ID: int = int(os.getenv("ANNOUNCE_CHANNEL_ID", "0"))
 
 # 稼働時間（JST）
 ACTIVE_START_HOUR: int = 23   # 23:00 開始

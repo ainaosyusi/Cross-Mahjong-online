@@ -92,6 +92,20 @@ class MatchingCog(commands.Cog):
         _save_state(self.recruitment_message.id, channel.id)
         log.info("募集開始")
 
+        # アナウンスチャンネルに通知
+        announce_ch = self.bot.get_channel(config.ANNOUNCE_CHANNEL_ID)
+        if announce_ch:
+            embed = discord.Embed(
+                title="🀄 本日の麻雀部が開催されました！",
+                description=(
+                    "**23:00〜4:00** まで対戦できます。\n\n"
+                    f"<#{config.MATCHING_CHANNEL_ID}> で参加ボタンを押してください。\n\n"
+                    "📊 [成績ダッシュボード](https://mj.kyoten-hub.com)"
+                ),
+                color=discord.Color.green(),
+            )
+            await announce_ch.send(embed=embed)
+
     async def handle_join(self, interaction: discord.Interaction, entry_type: str) -> None:
         if not is_active():
             await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
