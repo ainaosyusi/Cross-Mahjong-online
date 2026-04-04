@@ -59,6 +59,27 @@ async def on_ready():
             kwargs={"part": 2},
         )
 
+    # 再起動時の募集復元
+    if matching_cog:
+        from services.timeutil import is_active
+        from cogs.matching import _load_state
+        state = _load_state()
+        if state:
+            try:
+                ch = bot.get_channel(state["channel_id"])
+                if ch:
+                    matching_cog.recruitment_message = await ch.fetch_message(state["message_id"])
+                    matching_cog.current_part = state.get("part", matching_cog._detect_current_part())
+                    log.info("募集メッセージを復元: %s（%d部）", state["message_id"], matching_cog.current_part)
+            except Exception:
+                log.warning("募集メッセージの復元に失敗")
+                matching_cog.recruitment_message = None
+
+        if matching_cog.recruitment_message is None and is_active():
+            part = matching_cog._detect_current_part()
+            log.info("稼働時間内のため募集を自動開始（%d部）", part)
+            await matching_cog.start_recruitment(part=part)
+
     # 自動締めジョブ（4:00 JST）
     scheduler.add_job(
         daily_close,
