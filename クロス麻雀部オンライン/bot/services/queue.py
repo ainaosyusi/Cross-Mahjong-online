@@ -1,39 +1,54 @@
 import logging
-import random
 
 log = logging.getLogger("queue")
 
 
 class QueueService:
     def __init__(self):
-        self._queue_4: set[int] = set()     # 4人戦のみ
-        self._queue_3: set[int] = set()     # 3人戦のみ
-        self._queue_both: set[int] = set()  # 両方
+        self._queue_4: list[int] = []     # 4人戦のみ（参加順）
+        self._queue_3: list[int] = []     # 3人戦のみ（参加順）
+        self._queue_both: list[int] = []  # 両方（参加順）
+        self._names: dict[int, str] = {}  # user_id → 表示名
 
-    def add(self, user_id: int, entry_type: str) -> None:
+    def add(self, user_id: int, entry_type: str, display_name: str = "") -> None:
         self.remove(user_id)
         if entry_type == "4":
-            self._queue_4.add(user_id)
+            self._queue_4.append(user_id)
         elif entry_type == "3":
-            self._queue_3.add(user_id)
+            self._queue_3.append(user_id)
         elif entry_type == "both":
-            self._queue_both.add(user_id)
-        log.info("キュー追加: user=%s type=%s", user_id, entry_type)
+            self._queue_both.append(user_id)
+        if display_name:
+            self._names[user_id] = display_name
+        log.info("キュー追加: user=%s (%s) type=%s", user_id, display_name, entry_type)
 
     def remove(self, user_id: int) -> None:
-        self._queue_4.discard(user_id)
-        self._queue_3.discard(user_id)
-        self._queue_both.discard(user_id)
+        if user_id in self._queue_4:
+            self._queue_4.remove(user_id)
+        if user_id in self._queue_3:
+            self._queue_3.remove(user_id)
+        if user_id in self._queue_both:
+            self._queue_both.remove(user_id)
+        self._names.pop(user_id, None)
 
     def remove_users(self, user_ids: list[int]) -> None:
         for uid in user_ids:
             self.remove(uid)
 
     def get_queue_4(self) -> list[int]:
-        return list(self._queue_4 | self._queue_both)
+        """4人戦候補（参加順）"""
+        return self._queue_4 + self._queue_both
 
     def get_queue_3(self) -> list[int]:
-        return list(self._queue_3 | self._queue_both)
+        """3人戦候補（参加順）"""
+        return self._queue_3 + self._queue_both
+
+    def get_name(self, user_id: int) -> str:
+        return self._names.get(user_id, str(user_id))
+
+    def get_all_names(self) -> dict[int, str]:
+        """全待機者のID→表示名"""
+        return dict(self._names)
 
     def count_4(self) -> int:
         return len(self._queue_4) + len(self._queue_both)
@@ -45,6 +60,7 @@ class QueueService:
         self._queue_4.clear()
         self._queue_3.clear()
         self._queue_both.clear()
+        self._names.clear()
         log.info("キューをクリアしました")
 
     def is_in_queue(self, user_id: int) -> bool:
@@ -57,7 +73,7 @@ class QueueService:
     def try_match_4(self) -> list[int] | None:
         candidates = self.get_queue_4()
         if len(candidates) >= 4:
-            selected = random.sample(candidates, 4)
+            selected = candidates[:4]  # 早い者順
             self.remove_users(selected)
             log.info("4人戦マッチング成立: %s", selected)
             return selected
@@ -66,7 +82,7 @@ class QueueService:
     def try_match_3(self) -> list[int] | None:
         candidates = self.get_queue_3()
         if len(candidates) >= 3:
-            selected = random.sample(candidates, 3)
+            selected = candidates[:3]  # 早い者順
             self.remove_users(selected)
             log.info("3人戦マッチング成立: %s", selected)
             return selected

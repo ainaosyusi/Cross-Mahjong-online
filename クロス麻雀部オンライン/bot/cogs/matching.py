@@ -99,6 +99,18 @@ class MatchingCog(commands.Cog):
             log.error("マッチングチャンネルが見つかりません: %s", config.MATCHING_CHANNEL_ID)
             return
 
+        # 前の部の募集メッセージを終了表示にする
+        if self.recruitment_message:
+            try:
+                prev_part = self.current_part
+                embed = discord.Embed(
+                    title=f"🀄 第{prev_part}部 終了",
+                    color=discord.Color.greyple(),
+                )
+                await self.recruitment_message.edit(embed=embed, view=None)
+            except discord.NotFound:
+                pass
+
         self.queue.clear()
         self.current_part = part
         embed = self._build_embed()
@@ -133,7 +145,7 @@ class MatchingCog(commands.Cog):
         if self.queue.is_in_queue(user.id):
             self.queue.remove(user.id)
 
-        self.queue.add(user.id, entry_type)
+        self.queue.add(user.id, entry_type, user.display_name)
         await queries.upsert_member(str(user.id), user.display_name)
 
         labels = {"4": "4人戦", "3": "3人戦", "both": "両方"}
@@ -199,6 +211,16 @@ class MatchingCog(commands.Cog):
             ),
             inline=False,
         )
+        # 参加者一覧
+        names_4 = [self.queue.get_name(uid) for uid in self.queue.get_queue_4()]
+        names_3 = [self.queue.get_name(uid) for uid in self.queue.get_queue_3() if uid not in self.queue.get_queue_4()]
+        members_text = ""
+        if names_4:
+            members_text += f"**4人戦待ち:** {', '.join(names_4)}\n"
+        if names_3:
+            members_text += f"**3人戦待ち:** {', '.join(names_3)}\n"
+        if members_text:
+            embed.add_field(name="参加者", value=members_text, inline=False)
         return embed
 
     @app_commands.command(name="start_matching", description="手動で募集を開始します")
