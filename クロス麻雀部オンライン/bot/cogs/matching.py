@@ -58,6 +58,10 @@ class MatchingView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cog.handle_cancel(interaction)
 
+    @discord.ui.button(label="📣 募集通知", style=discord.ButtonStyle.secondary, custom_id="notify_announce", row=1)
+    async def notify_announce(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cog.handle_notify_announce(interaction)
+
 
 class MatchingCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -65,6 +69,7 @@ class MatchingCog(commands.Cog):
         self.queue = QueueService()
         self.recruitment_message: discord.Message | None = None
         self.current_part: int = 1
+        self.last_notify_time: float = 0.0  # 募集通知の最終実行時刻（UNIX秒）
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -162,6 +167,65 @@ class MatchingCog(commands.Cog):
             await self._announce_one_more(3)
 
         await self._try_match(interaction.channel)
+
+    async def handle_notify_announce(self, interaction: discord.Interaction) -> None:
+        """募集通知ボタン: 1時間に1回、現在の待機状況をアナウンスに投稿"""
+        if not is_active():
+            await interaction.response.send_message(INACTIVE_MESSAGE, ephemeral=True)
+            return
+
+        import time
+        now = time.time()
+        elapsed = now - self.last_notify_time
+        cooldown = 3600  # 1時間
+
+        if elapsed < cooldown:
+            remaining = int(cooldown - elapsed)
+            mins = remaining // 60
+            secs = remaining % 60
+            await interaction.response.send_message(
+                f"⏳ 次の募集通知まで **{mins}分{secs}秒** お待ちください。",
+                ephemeral=True,
+            )
+            return
+
+        announce_ch = self.bot.get_channel(config.ANNOUNCE_CHANNEL_ID)
+        if not announce_ch:
+            await interaction.response.send_message(
+                "アナウンスチャンネルが見つかりません。", ephemeral=True
+            )
+            return
+
+        count_4 = self.queue.count_4()
+        count_3 = self.queue.count_3()
+        total = count_4 + count_3
+
+        if total == 0:
+            desc = "現在、待機中の参加者はまだいません。\n一緒に打てる方を募集中です！"
+        else:
+            desc = (
+                f"**現在 {total} 人が待機中！**\n"
+                f"・4人戦：{count_4}人\n"
+                f"・3人戦：{count_3}人\n\n"
+                f"参加可能な方はぜひ！"
+            )
+
+        embed = discord.Embed(
+            title="📣 麻雀 募集中！",
+            description=(
+                f"{desc}\n\n"
+                f"<#{config.MATCHING_CHANNEL_ID}> で参加ボタンを押してください。"
+            ),
+            color=discord.Color.orange(),
+        )
+        embed.set_footer(text=f"通知者: {interaction.user.display_name}")
+        msg = await announce_ch.send(embed=embed)
+        asyncio.create_task(self._auto_delete(msg, 3600))
+
+        self.last_notify_time = now
+        await interaction.response.send_message(
+            "📣 募集通知を送信しました。", ephemeral=True
+        )
 
     async def _announce_one_more(self, match_type: int) -> None:
         """残り1人通知（1時間後に自動削除）"""
