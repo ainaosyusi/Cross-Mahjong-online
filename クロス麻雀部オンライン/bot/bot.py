@@ -108,13 +108,8 @@ async def daily_close():
         matching_cog.queue.clear()
         if matching_cog.recruitment_message:
             try:
-                embed = discord.Embed(
-                    title="🀄 本日の募集は終了しました",
-                    description="結果はWebダッシュボードで確認できます。",
-                    color=discord.Color.greyple(),
-                )
-                await matching_cog.recruitment_message.edit(embed=embed, view=None)
-            except discord.NotFound:
+                await matching_cog.recruitment_message.delete()
+            except (discord.NotFound, discord.HTTPException):
                 pass
             matching_cog.recruitment_message = None
         from cogs.matching import _clear_state

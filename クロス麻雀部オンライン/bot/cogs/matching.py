@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -99,17 +100,13 @@ class MatchingCog(commands.Cog):
             log.error("マッチングチャンネルが見つかりません: %s", config.MATCHING_CHANNEL_ID)
             return
 
-        # 前の部の募集メッセージを終了表示にする
+        # 前の部の募集メッセージを削除
         if self.recruitment_message:
             try:
-                prev_part = self.current_part
-                embed = discord.Embed(
-                    title=f"🀄 第{prev_part}部 終了",
-                    color=discord.Color.greyple(),
-                )
-                await self.recruitment_message.edit(embed=embed, view=None)
-            except discord.NotFound:
+                await self.recruitment_message.delete()
+            except (discord.NotFound, discord.HTTPException):
                 pass
+            self.recruitment_message = None
 
         self.queue.clear()
         self.current_part = part
@@ -145,6 +142,8 @@ class MatchingCog(commands.Cog):
         if self.queue.is_in_queue(user.id):
             self.queue.remove(user.id)
 
+        prev_count_4 = self.queue.count_4()
+        prev_count_3 = self.queue.count_3()
         self.queue.add(user.id, entry_type, user.display_name)
         await queries.upsert_member(str(user.id), user.display_name)
 
@@ -153,7 +152,41 @@ class MatchingCog(commands.Cog):
             f"{labels[entry_type]}に参加登録しました。", ephemeral=True
         )
         await self._update_display()
+
+        # あと1人通知（カウント変化で閾値をまたいだ時のみ）
+        new_count_4 = self.queue.count_4()
+        new_count_3 = self.queue.count_3()
+        if prev_count_4 < 3 <= new_count_4 < 4:
+            await self._announce_one_more(4)
+        if prev_count_3 < 2 <= new_count_3 < 3:
+            await self._announce_one_more(3)
+
         await self._try_match(interaction.channel)
+
+    async def _announce_one_more(self, match_type: int) -> None:
+        """残り1人通知（1時間後に自動削除）"""
+        announce_ch = self.bot.get_channel(config.ANNOUNCE_CHANNEL_ID)
+        if not announce_ch:
+            return
+        embed = discord.Embed(
+            title=f"🔔 麻雀参加あと1人！",
+            description=(
+                f"**{match_type}人戦** の参加者があと1人で揃います！\n"
+                f"<#{config.MATCHING_CHANNEL_ID}> で参加ボタンを押してください。"
+            ),
+            color=discord.Color.orange(),
+        )
+        msg = await announce_ch.send(embed=embed)
+        # 1時間後に自動削除
+        asyncio.create_task(self._auto_delete(msg, 3600))
+
+    @staticmethod
+    async def _auto_delete(msg: discord.Message, delay: int) -> None:
+        await asyncio.sleep(delay)
+        try:
+            await msg.delete()
+        except (discord.NotFound, discord.HTTPException):
+            pass
 
     async def handle_cancel(self, interaction: discord.Interaction) -> None:
         if not is_active():
