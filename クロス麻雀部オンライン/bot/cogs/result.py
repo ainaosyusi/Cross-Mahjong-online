@@ -127,25 +127,31 @@ class ResultCog(commands.Cog):
             await interaction.response.send_message("この結果は既に処理済みです。", ephemeral=True)
             return
 
+        # match_idが不明な場合は新規作成
+        match_id = result.match_id
+        match_type = len(result.players)
+        if not match_id:
+            match_id = await queries.create_match(match_type)
+            log.info("match_id 不明のため新規作成: %d", match_id)
+
         # DB保存
         for p in result.players:
-            if p.discord_id:
-                member_id = await queries.upsert_member(str(p.discord_id), p.player_name)
-            else:
-                member_id = await queries.upsert_member(p.player_name, p.player_name)
+            # discord_id が不明なので、プレイヤー名をIDとして扱う
+            discord_id_key = str(p.discord_id) if p.discord_id else f"ocr:{p.player_name}"
+            member_id = await queries.upsert_member(discord_id_key, p.player_name)
+            await queries.add_match_player(match_id, member_id)
+            await queries.save_match_result(
+                match_id, member_id, p.rank, p.score, p.point
+            )
 
-            if result.match_id:
-                await queries.save_match_result(
-                    result.match_id, member_id, p.rank, p.score, p.point
-                )
-
-        if result.match_id:
-            await queries.update_match_status(result.match_id, "finished")
+        await queries.update_match_status(match_id, "finished")
 
         del self.pending_results[message_id]
 
-        await interaction.response.send_message("✅ 結果を記録しました。")
-        log.info("成績記録: match_id=%s players=%d", result.match_id, len(result.players))
+        await interaction.response.send_message(
+            f"✅ 結果を記録しました。（match_id={match_id}）"
+        )
+        log.info("成績記録: match_id=%s players=%d", match_id, len(result.players))
 
     async def handle_edit(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
