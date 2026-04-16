@@ -63,7 +63,7 @@ async def remove_match_player(match_id: int, member_id: int) -> None:
 
 async def update_match_status(match_id: int, status: str) -> None:
     db = await get_db()
-    finished_at = datetime.utcnow().isoformat() if status in ("finished", "disbanded") else None
+    finished_at = datetime.utcnow().isoformat() + "Z" if status in ("finished", "disbanded") else None
     await db.execute(
         "UPDATE matches SET status = ?, finished_at = COALESCE(?, finished_at) WHERE id = ?",
         (status, finished_at, match_id),

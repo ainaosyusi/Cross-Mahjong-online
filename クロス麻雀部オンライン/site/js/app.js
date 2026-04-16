@@ -1,5 +1,20 @@
 const API_BASE = "https://mj-api.kyoten-hub.com";
 
+// DBに保存されたISO文字列（UTC想定、TZ無し）をJSTで表示
+function formatJST(iso) {
+  if (!iso) return "";
+  // Z/+/- のタイムゾーン情報が無ければUTCとして扱う
+  let s = iso;
+  if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) s = s + "Z";
+  return new Date(s).toLocaleString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+}
+
 // ========== Navigation ==========
 document.querySelectorAll(".nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
@@ -101,14 +116,7 @@ async function loadHistory() {
 
     let html = "";
     data.forEach((m) => {
-      const date = m.finished_at
-        ? new Date(m.finished_at).toLocaleString("ja-JP", {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "";
+      const date = formatJST(m.finished_at);
 
       html += `<div class="match-card">
         <div class="match-header">
@@ -165,11 +173,7 @@ async function loadEdit() {
 
     let html = "";
     data.forEach((m) => {
-      const date = m.finished_at
-        ? new Date(m.finished_at).toLocaleString("ja-JP", {
-            month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
-          })
-        : "";
+      const date = formatJST(m.finished_at);
       html += `<div class="match-card edit-match-card">
         <div class="match-header">
           <span class="match-date">#${m.match_id}  ${date}</span>
