@@ -1,5 +1,4 @@
 import logging
-import re
 from dataclasses import dataclass
 
 import discord
@@ -132,11 +131,8 @@ class ResultCog(commands.Cog):
         # スレッド内なら通知抑制
         silent = is_result_thread
         msg = await message.reply(embed=embed, view=ConfirmView(self, 0), silent=silent)
-        # 結果スレッドの場合、スレッド名から match_id を推測して紐付け
-        if is_result_thread:
-            m = re.match(r"対戦卓-(\d+)", message.channel.name or "")
-            if m:
-                result.match_id = int(m.group(1))
+        # 各画像は独立した対戦として扱う（match_id は確定時に新規採番）
+        result.match_id = None
         self.pending_results[msg.id] = result
         msg_view = ConfirmView(self, msg.id)
         await msg.edit(view=msg_view)
