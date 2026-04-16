@@ -165,15 +165,19 @@ class OCRService:
             row_words.sort(key=lambda w: w["cx"])
 
             # プレイヤー名候補: スコアの左400px以内、かつ非数字テキスト
+            # 雀魂のレイアウト: 名前はスコアより上にある
             NAME_MAX_DISTANCE = 400
             name_parts = []
             for w in row_words:
-                # スコア以降は名前ではない
+                # スコア以降（右側）は名前ではない
                 if w["left"] >= score_word["left"] - 5:
                     continue
                 # スコアから遠すぎる（UI要素など）は除外
                 distance = score_word["left"] - w["right"]
                 if distance > NAME_MAX_DISTANCE:
+                    continue
+                # スコアより下のテキストは除外（段位マーク、画面下のUI等）
+                if w["top"] >= score_word["cy"]:
                     continue
                 t = w["text"].strip().rstrip(":：")
                 if not t:
