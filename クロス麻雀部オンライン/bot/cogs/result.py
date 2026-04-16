@@ -89,7 +89,9 @@ class ResultCog(commands.Cog):
         # 認識結果表示
         lines = []
         for p in result.players:
-            lines.append(f"**{p.rank}位**: {p.player_name}")
+            score_str = f"  {p.score}" if p.score else ""
+            point_str = f"  ({p.point:+.1f})" if p.point else ""
+            lines.append(f"**{p.rank}位**: {p.player_name}{score_str}{point_str}")
 
         embed = discord.Embed(
             title="📊 対戦結果を認識しました",

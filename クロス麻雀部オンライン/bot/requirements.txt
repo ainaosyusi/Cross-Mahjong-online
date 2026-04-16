@@ -7,3 +7,4 @@ python-dotenv>=1.0
 aiosqlite>=0.19
 PyNaCl>=1.5
 flask>=3.0
+google-cloud-vision>=3.7
