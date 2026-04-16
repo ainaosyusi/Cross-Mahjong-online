@@ -138,8 +138,13 @@ async def get_ranking(start_date: str | None = None, end_date: str | None = None
             COUNT(*) AS game_count,
             ROUND(AVG(r.rank), 2) AS avg_rank,
             ROUND(SUM(r.point), 1) AS total_point,
+            ROUND(AVG(r.point), 1) AS avg_point,
+            SUM(r.score) AS total_score,
+            ROUND(AVG(r.score), 0) AS avg_score,
+            MAX(r.score) AS max_score,
             ROUND(SUM(CASE WHEN r.rank = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS top_rate,
-            ROUND(SUM(CASE WHEN r.rank <= 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS rentai_rate
+            ROUND(SUM(CASE WHEN r.rank <= 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS rentai_rate,
+            ROUND(SUM(CASE WHEN r.rank = 4 THEN 0 ELSE 1 END) * 100.0 / COUNT(*), 1) AS last_avoid_rate
         FROM match_results r
         JOIN members m ON m.id = r.member_id
         JOIN matches mt ON mt.id = r.match_id
@@ -172,8 +177,13 @@ async def get_player_stats(
             COUNT(*) AS game_count,
             ROUND(AVG(r.rank), 2) AS avg_rank,
             ROUND(SUM(r.point), 1) AS total_point,
+            ROUND(AVG(r.point), 1) AS avg_point,
+            SUM(r.score) AS total_score,
+            ROUND(AVG(r.score), 0) AS avg_score,
+            MAX(r.score) AS max_score,
             ROUND(SUM(CASE WHEN r.rank = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS top_rate,
-            ROUND(SUM(CASE WHEN r.rank <= 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS rentai_rate
+            ROUND(SUM(CASE WHEN r.rank <= 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS rentai_rate,
+            ROUND(SUM(CASE WHEN r.rank = 4 THEN 0 ELSE 1 END) * 100.0 / COUNT(*), 1) AS last_avoid_rate
         FROM match_results r
         JOIN members m ON m.id = r.member_id
         JOIN matches mt ON mt.id = r.match_id

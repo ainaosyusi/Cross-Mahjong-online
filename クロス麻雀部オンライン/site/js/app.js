@@ -52,11 +52,16 @@ async function loadRanking() {
 
     const medals = ["🥇", "🥈", "🥉"];
     let html =
-      '<table class="ranking-table"><tr><th>#</th><th>プレイヤー</th><th>対戦数</th><th>平均順位</th><th>トップ率</th><th>連対率</th></tr>';
+      '<table class="ranking-table"><tr>' +
+      '<th>#</th><th>プレイヤー</th><th>対戦</th>' +
+      '<th>平均順位</th><th>トップ率</th><th>連対率</th><th>ラス回避</th>' +
+      '<th>総Pt</th><th>平均Pt</th><th>総素点</th><th>平均素点</th><th>最高</th>' +
+      '</tr>';
 
     data.forEach((r, i) => {
       const cls = i < 3 ? ` class="rank-${i + 1}"` : "";
       const rank = medals[i] || i + 1;
+      const fmt = (v) => (v == null ? "-" : v);
       html += `<tr>
         <td${cls}>${rank}</td>
         <td>${r.display_name}</td>
@@ -64,6 +69,12 @@ async function loadRanking() {
         <td>${r.avg_rank}</td>
         <td>${r.top_rate}%</td>
         <td>${r.rentai_rate}%</td>
+        <td>${fmt(r.last_avoid_rate)}%</td>
+        <td>${fmt(r.total_point)}</td>
+        <td>${fmt(r.avg_point)}</td>
+        <td>${fmt(r.total_score)}</td>
+        <td>${fmt(r.avg_score)}</td>
+        <td>${fmt(r.max_score)}</td>
       </tr>`;
     });
 

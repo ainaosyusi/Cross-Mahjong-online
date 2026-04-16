@@ -175,9 +175,14 @@ header {
 }
 
 /* ========== Ranking Table ========== */
+#ranking-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 .ranking-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 720px;
 }
 .ranking-table th, .ranking-table td {
     padding: 12px 10px;

@@ -67,10 +67,14 @@ class RankingCog(commands.Cog):
         for i, row in enumerate(rows, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f" {i}")
             lines.append(
-                f"{medal}  **{row['display_name']}**　"
-                f"対戦数: {row['game_count']}　"
+                f"{medal} **{row['display_name']}**\n"
+                f"　対戦: {row['game_count']}　"
                 f"平均順位: {row['avg_rank']}　"
-                f"トップ率: {row['top_rate']}%"
+                f"トップ率: {row['top_rate']}%　"
+                f"ラス回避: {row.get('last_avoid_rate', 0)}%\n"
+                f"　総得点: {row['total_point']:+g}　"
+                f"平均: {row.get('avg_point', 0):+g}　"
+                f"最高: {row.get('max_score', 0)}"
             )
 
         embed = discord.Embed(
@@ -103,9 +107,14 @@ class RankingCog(commands.Cog):
         )
         embed.add_field(name="対戦数", value=str(stats["game_count"]), inline=True)
         embed.add_field(name="平均順位", value=str(stats["avg_rank"]), inline=True)
-        embed.add_field(name="総合得点", value=str(stats["total_point"]), inline=True)
+        embed.add_field(name="総合ポイント", value=f"{stats['total_point']:+g}", inline=True)
+        embed.add_field(name="平均ポイント", value=f"{stats.get('avg_point', 0):+g}", inline=True)
+        embed.add_field(name="総獲得素点", value=str(stats.get('total_score', 0) or 0), inline=True)
+        embed.add_field(name="平均素点", value=str(int(stats.get('avg_score', 0) or 0)), inline=True)
+        embed.add_field(name="最高素点", value=str(stats.get('max_score', 0) or 0), inline=True)
         embed.add_field(name="トップ率", value=f"{stats['top_rate']}%", inline=True)
         embed.add_field(name="連対率", value=f"{stats['rentai_rate']}%", inline=True)
+        embed.add_field(name="ラス回避率", value=f"{stats.get('last_avoid_rate', 0)}%", inline=True)
 
         await interaction.response.send_message(embed=embed)
 
