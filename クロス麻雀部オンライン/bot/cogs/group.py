@@ -19,6 +19,7 @@ class MatchInfo:
     match_type: int
     thread_id: int
     voice_channel_id: int
+    result_thread_id: int = 0
     player_ids: list[int] = field(default_factory=list)
 
 
@@ -113,6 +114,18 @@ class GroupCog(commands.Cog):
             overwrites=overwrites,
         )
 
+        # 対戦結果チャンネルに専用スレッドを作成
+        result_channel = self.bot.get_channel(config.RESULT_CHANNEL_ID)
+        result_thread = None
+        if result_channel:
+            try:
+                result_thread = await result_channel.create_thread(
+                    name=f"対戦卓-{match_id:03d} 結果",
+                    type=discord.ChannelType.public_thread,
+                )
+            except discord.HTTPException as e:
+                log.warning("結果スレッドの作成に失敗: %s", e)
+
         # DB更新
         await queries.update_match_channel_ids(match_id, str(thread.id), str(vc.id))
 
@@ -122,6 +135,7 @@ class GroupCog(commands.Cog):
             match_type=match_type,
             thread_id=thread.id,
             voice_channel_id=vc.id,
+            result_thread_id=result_thread.id if result_thread else 0,
             player_ids=list(user_ids),
         )
         self.active_matches[match_id] = info
@@ -145,14 +159,37 @@ class GroupCog(commands.Cog):
             value="部屋番号を共有してゲームを開始してください。",
             inline=False,
         )
-        embed.add_field(
-            name="📸 対戦後のお願い",
-            value=f"対戦が終わったら <#{config.RESULT_CHANNEL_ID}> にスクリーンショットを投稿するか、`/result` コマンドで結果を入力してください。",
-            inline=False,
-        )
+        if result_thread:
+            embed.add_field(
+                name="📸 対戦後のお願い",
+                value=f"対戦が終わったら <#{result_thread.id}> にスクリーンショットを投稿してください。自動で結果を認識します。",
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="📸 対戦後のお願い",
+                value=f"対戦が終わったら <#{config.RESULT_CHANNEL_ID}> にスクリーンショットを投稿するか、`/result` コマンドで結果を入力してください。",
+                inline=False,
+            )
 
         view = GroupView(self, match_id)
         await thread.send(content=mentions, embed=embed, view=view)
+
+        # 結果スレッドにも案内
+        if result_thread:
+            result_embed = discord.Embed(
+                title=f"📸 対戦卓-{match_id:03d} 結果投稿用スレッド",
+                description=(
+                    f"{type_label}の対戦結果をここに投稿してください。\n\n"
+                    "**使い方：**\n"
+                    "・雀魂の終局画面スクショを送信 → 自動で順位・スコアを認識\n"
+                    "・認識結果が表示されたら「確定」ボタンで記録\n"
+                    "・認識失敗時は `/result` コマンドで手動入力\n\n"
+                    "誤認識があった場合はダッシュボードから修正できます。"
+                ),
+                color=discord.Color.blue(),
+            )
+            await result_thread.send(content=mentions, embed=result_embed, silent=True)
 
         # メンバー表示名を更新
         for uid in user_ids:

@@ -22,6 +22,7 @@ function showPage(page) {
     l.classList.toggle("active", l.dataset.page === page);
   });
   window.scrollTo(0, 0);
+  if (page === "edit") loadEdit();
 }
 
 // ========== Ranking ==========
@@ -116,6 +117,106 @@ async function loadHistory() {
     el.innerHTML = html;
   } catch (e) {
     el.innerHTML = '<div class="no-data">データの取得に失敗しました</div>';
+  }
+}
+
+// ========== Edit ==========
+let members = [];
+
+function getToken() {
+  return localStorage.getItem("mj_edit_token") || "";
+}
+
+function saveToken() {
+  const v = document.getElementById("edit-token").value;
+  localStorage.setItem("mj_edit_token", v);
+  alert("トークンを保存しました。");
+  loadEdit();
+}
+
+async function loadEdit() {
+  const el = document.getElementById("edit-content");
+  document.getElementById("edit-token").value = getToken();
+  el.innerHTML = '<div class="loading-state">読み込み中...</div>';
+
+  try {
+    const [recentRes, membersRes] = await Promise.all([
+      fetch(`${API_BASE}/api/recent`),
+      fetch(`${API_BASE}/api/members`),
+    ]);
+    const data = await recentRes.json();
+    members = await membersRes.json();
+
+    if (!data.length) {
+      el.innerHTML = '<div class="no-data">まだデータがありません</div>';
+      return;
+    }
+
+    let html = "";
+    data.forEach((m) => {
+      const date = m.finished_at
+        ? new Date(m.finished_at).toLocaleString("ja-JP", {
+            month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+          })
+        : "";
+      html += `<div class="match-card edit-match-card">
+        <div class="match-header">
+          <span class="match-date">#${m.match_id}  ${date}</span>
+          <span class="match-type-badge">${m.match_type}人戦</span>
+        </div>`;
+
+      m.players.forEach((p) => {
+        const memberOptions = members.map(mem =>
+          `<option value="${mem.id}"${mem.id === p.member_id ? " selected" : ""}>${mem.display_name}</option>`
+        ).join("");
+        html += `<div class="player-row" data-result-id="${p.result_id}">
+          <select class="edit-rank">
+            ${[1,2,3,4].map(r => `<option value="${r}"${r === p.rank ? " selected" : ""}>${r}位</option>`).join("")}
+          </select>
+          <select class="edit-member">${memberOptions}</select>
+          <input class="edit-score" type="number" value="${p.score || 0}" step="100">
+          <input class="edit-point" type="number" value="${p.point || 0}" step="0.1">
+          <button class="btn-primary" onclick="saveRow(this)">保存</button>
+        </div>`;
+      });
+
+      html += "</div>";
+    });
+
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = '<div class="no-data">データの取得に失敗しました</div>';
+  }
+}
+
+async function saveRow(btn) {
+  const row = btn.closest(".player-row");
+  const resultId = row.dataset.resultId;
+  const payload = {
+    rank: parseInt(row.querySelector(".edit-rank").value, 10),
+    member_id: parseInt(row.querySelector(".edit-member").value, 10),
+    score: parseInt(row.querySelector(".edit-score").value, 10),
+    point: parseFloat(row.querySelector(".edit-point").value),
+  };
+  try {
+    const res = await fetch(`${API_BASE}/api/result/${resultId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Edit-Token": getToken(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      btn.textContent = "保存済";
+      setTimeout(() => (btn.textContent = "保存"), 2000);
+    } else if (res.status === 401) {
+      alert("編集トークンが無効です。");
+    } else {
+      alert("保存に失敗しました。");
+    }
+  } catch (e) {
+    alert("保存に失敗しました: " + e.message);
   }
 }
 

@@ -15,6 +15,7 @@
                 <a href="#" class="nav-link active" data-page="home">ホーム</a>
                 <a href="#" class="nav-link" data-page="ranking">ランキング</a>
                 <a href="#" class="nav-link" data-page="history">対戦履歴</a>
+                <a href="#" class="nav-link" data-page="edit">成績修正</a>
             </nav>
             <button class="hamburger" aria-label="メニュー">
                 <span></span><span></span><span></span>
@@ -130,6 +131,24 @@
             <div class="container">
                 <h3 class="section-title">📋 対戦履歴</h3>
                 <div id="history-content" class="loading-state">読み込み中...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 成績修正 -->
+    <main id="page-edit" class="page">
+        <section class="section">
+            <div class="container">
+                <h3 class="section-title">🛠 成績修正</h3>
+                <div class="card">
+                    <p>誤認識や入力ミスを修正できます。編集トークンが必要です。</p>
+                    <div class="form-row">
+                        <label>編集トークン:</label>
+                        <input type="password" id="edit-token" placeholder="管理者に確認">
+                        <button class="btn-primary" onclick="saveToken()">保存</button>
+                    </div>
+                </div>
+                <div id="edit-content" class="loading-state">読み込み中...</div>
             </div>
         </section>
     </main>

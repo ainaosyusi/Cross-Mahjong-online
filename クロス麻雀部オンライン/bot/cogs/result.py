@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 
 import discord
@@ -53,8 +54,16 @@ class ResultCog(commands.Cog):
     async def on_message(self, message: discord.Message):
         if message.author.bot:
             return
-        if message.channel.id != config.RESULT_CHANNEL_ID:
+
+        # 対戦結果チャンネル本体、または対戦結果チャンネル配下のスレッド
+        is_result_channel = message.channel.id == config.RESULT_CHANNEL_ID
+        is_result_thread = (
+            isinstance(message.channel, discord.Thread)
+            and message.channel.parent_id == config.RESULT_CHANNEL_ID
+        )
+        if not (is_result_channel or is_result_thread):
             return
+
         if not message.attachments:
             return
         if not is_active():
@@ -100,10 +109,15 @@ class ResultCog(commands.Cog):
         )
         embed.set_footer(text="この結果で確定しますか？")
 
-        msg = await message.reply(embed=embed, view=ConfirmView(self, 0))
-        # message_id を使って pending に保存
+        # スレッド内なら通知抑制
+        silent = is_result_thread
+        msg = await message.reply(embed=embed, view=ConfirmView(self, 0), silent=silent)
+        # 結果スレッドの場合、スレッド名から match_id を推測して紐付け
+        if is_result_thread:
+            m = re.match(r"対戦卓-(\d+)", message.channel.name or "")
+            if m:
+                result.match_id = int(m.group(1))
         self.pending_results[msg.id] = result
-        # View の message_id を更新
         msg_view = ConfirmView(self, msg.id)
         await msg.edit(view=msg_view)
 
