@@ -164,35 +164,43 @@ class OCRService:
             ]
             row_words.sort(key=lambda w: w["cx"])
 
-            # プレイヤー名候補: スコアより左、かつ3文字以上 or 英数字のまとまり
+            # プレイヤー名候補: スコアの左400px以内、かつ非数字テキスト
+            NAME_MAX_DISTANCE = 400
             name_parts = []
             for w in row_words:
+                # スコア以降は名前ではない
                 if w["left"] >= score_word["left"] - 5:
-                    continue  # スコア以降は名前ではない
+                    continue
+                # スコアから遠すぎる（UI要素など）は除外
+                distance = score_word["left"] - w["right"]
+                if distance > NAME_MAX_DISTANCE:
+                    continue
                 t = w["text"].strip().rstrip(":：")
-                # 除外: 数字のみ、記号のみ、"位"、"家"、"自家"、"PT"、"x0" 等
                 if not t:
                     continue
-                if re.fullmatch(r"[\d\-+\.,%()]+", t):
+                # 数字・記号のみ除外
+                if re.fullmatch(r"[\d\-+\.,%():：]+", t):
                     continue
-                if t in ("位", "自家", "家", "自", "白", "PT", "pt", "RT"):
+                if t in ("位", "自家", "家", "自", "白", "PT", "pt", "RT", "自宅"):
                     continue
                 if re.fullmatch(r"[×x]\s*\d+", t):
                     continue
                 if re.fullmatch(r"[1-4]", t):
                     continue
-                # 1文字の漢字で意味不明なもの（牌の種類「東西南北中発白萬筒索」など）は除外
-                if len(t) == 1 and t in "東西南北中発白萬筒索發":
+                # 1文字の漢字で麻雀用語は除外
+                if len(t) == 1 and t in "東西南北中発白萬筒索發家位戰戦":
+                    continue
+                # 時刻表示（HH:MM）除外
+                if re.fullmatch(r"\d{1,2}:\d{2}", t):
+                    continue
+                # 丸囲み数字（①②③⑦等）やURLの断片は除外
+                if re.fullmatch(r"[①-⑳]", t):
                     continue
                 name_parts.append((w["cx"], t))
 
-            # 名前は左のものを優先。必要なら結合。
+            # X座標でソートして結合
             name_parts.sort()
-            # 遠くのもの（同じ行だが別要素）を除外するために、最初の候補からの距離でフィルタ
-            if name_parts:
-                first_x = name_parts[0][0]
-                name_parts = [t for x, t in name_parts if x - first_x < 200]
-            player_name = "".join(name_parts) if name_parts else f"Player{rank}"
+            player_name = "".join(t for _, t in name_parts) if name_parts else f"Player{rank}"
 
             # ポイント: スコアより右、符号付き小数
             point = 0.0
