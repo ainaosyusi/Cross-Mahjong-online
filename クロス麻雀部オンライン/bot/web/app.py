@@ -2,7 +2,11 @@ import os
 import secrets
 import sqlite3
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
+
+# bot/.env を読み込む（web/ の一つ上にある）
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "mahjong.db")
 EDIT_TOKEN = os.getenv("EDIT_TOKEN", secrets.token_urlsafe(16))
