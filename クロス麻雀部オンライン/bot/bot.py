@@ -122,10 +122,14 @@ async def daily_close():
             await group_cog._disband_match(match_id)
 
     # 本日のサマリーを #ランキング に投稿
+    # セッション: 20:00 JST 〜 4:00 JST → UTC変換して検索
+    from datetime import datetime, timedelta, timezone
     from services.timeutil import now_jst
-    today = now_jst()
-    start = today.replace(hour=0, minute=0, second=0).isoformat()
-    end = today.replace(hour=23, minute=59, second=59).isoformat()
+    now = now_jst()
+    session_start_utc = (now - timedelta(hours=8)).astimezone(timezone.utc)
+    session_end_utc = now.astimezone(timezone.utc)
+    start = session_start_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end = session_end_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     ranking = await queries.get_ranking(start, end)
 
     channel = bot.get_channel(config.RANKING_CHANNEL_ID)
@@ -134,19 +138,28 @@ async def daily_close():
         for i, row in enumerate(ranking, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f" {i}")
             lines.append(
-                f"{medal}  **{row['display_name']}**　"
-                f"対戦数: {row['game_count']}　"
-                f"平均順位: {row['avg_rank']}"
+                f"{medal} **{row['display_name']}**\n"
+                f"　対戦: {row['game_count']}　"
+                f"平均順位: {row['avg_rank']}　"
+                f"トップ率: {row['top_rate']}%\n"
+                f"　総得点: {row['total_point']:+g}　"
+                f"平均: {row.get('avg_point', 0):+g}　"
+                f"最高: {row.get('max_score', 0)}"
             )
         embed = discord.Embed(
-            title=f"📊 本日の結果（{today.strftime('%Y/%m/%d')}）",
-            description="\n".join(lines) if lines else "本日の対戦はありませんでした。",
+            title=f"📊 本日の結果（{now.strftime('%Y/%m/%d')}）",
+            description="\n".join(lines),
             color=discord.Color.blue(),
+        )
+        embed.add_field(
+            name="",
+            value="[📊 成績ダッシュボード](https://mj.kyoten-hub.com)",
+            inline=False,
         )
         await channel.send(embed=embed)
     elif channel:
         embed = discord.Embed(
-            title=f"📊 本日の結果（{today.strftime('%Y/%m/%d')}）",
+            title=f"📊 本日の結果（{now.strftime('%Y/%m/%d')}）",
             description="本日の対戦はありませんでした。",
             color=discord.Color.greyple(),
         )

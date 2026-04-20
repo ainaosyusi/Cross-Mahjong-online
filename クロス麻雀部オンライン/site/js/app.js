@@ -69,7 +69,7 @@ async function loadRanking() {
     let html =
       '<table class="ranking-table"><tr>' +
       '<th>#</th><th>プレイヤー</th><th>対戦</th>' +
-      '<th>平均順位</th><th>トップ率</th><th>連対率</th><th>ラス回避</th>' +
+      '<th>平均順位</th><th>トップ率</th>' +
       '<th>総Pt</th><th>平均Pt</th><th>総素点</th><th>平均素点</th><th>最高</th>' +
       '</tr>';
 
@@ -83,8 +83,6 @@ async function loadRanking() {
         <td>${r.game_count}</td>
         <td>${r.avg_rank}</td>
         <td>${r.top_rate}%</td>
-        <td>${r.rentai_rate}%</td>
-        <td>${fmt(r.last_avoid_rate)}%</td>
         <td>${fmt(r.total_point)}</td>
         <td>${fmt(r.avg_point)}</td>
         <td>${fmt(r.total_score)}</td>
@@ -127,7 +125,9 @@ async function loadHistory() {
 
       m.players.forEach((p) => {
         const cls = p.rank <= 3 ? ` rank-${p.rank}` : "";
-        html += `<span class="match-player${cls}">${p.rank}位: ${p.name}</span>`;
+        const score = p.score ? ` ${p.score}` : "";
+        const pt = p.point ? ` (${p.point > 0 ? "+" : ""}${p.point})` : "";
+        html += `<span class="match-player${cls}">${p.rank}位: ${p.name}${score}${pt}</span>`;
       });
 
       html += "</div></div>";
