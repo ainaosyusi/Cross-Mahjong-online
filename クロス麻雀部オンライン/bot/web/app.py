@@ -161,6 +161,55 @@ def api_delete_result(result_id: int):
     return jsonify({"ok": True})
 
 
+@app.route("/api/match/<int:match_id>", methods=["PATCH", "OPTIONS"])
+def api_update_match(match_id: int):
+    if request.method == "OPTIONS":
+        return ("", 204)
+    if not _require_edit_token():
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json() or {}
+    if "match_type" in data:
+        db = get_db()
+        db.execute(
+            "UPDATE matches SET match_type = ? WHERE id = ?",
+            (data["match_type"], match_id),
+        )
+        db.commit()
+        db.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/match/<int:match_id>/result", methods=["POST", "OPTIONS"])
+def api_add_result(match_id: int):
+    """既存の試合に結果行を追加"""
+    if request.method == "OPTIONS":
+        return ("", 204)
+    if not _require_edit_token():
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json() or {}
+    member_id = data.get("member_id")
+    rank = data.get("rank", 4)
+    score = data.get("score", 0)
+    point = data.get("point", 0.0)
+    if not member_id:
+        return jsonify({"error": "member_id required"}), 400
+    db = get_db()
+    db.execute(
+        "INSERT OR IGNORE INTO match_players (match_id, member_id) VALUES (?, ?)",
+        (match_id, member_id),
+    )
+    db.execute(
+        """INSERT INTO match_results (match_id, member_id, rank, score, point)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(match_id, member_id) DO UPDATE SET
+            rank = excluded.rank, score = excluded.score, point = excluded.point""",
+        (match_id, member_id, rank, score, point),
+    )
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
     print(f"Edit token (set EDIT_TOKEN env to persist): {EDIT_TOKEN}")
     app.run(host="0.0.0.0", port=8080)

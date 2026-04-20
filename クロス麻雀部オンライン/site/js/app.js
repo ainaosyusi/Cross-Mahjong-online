@@ -174,26 +174,38 @@ async function loadEdit() {
     let html = "";
     data.forEach((m) => {
       const date = formatJST(m.finished_at);
-      html += `<div class="match-card edit-match-card">
+      const memberOptions = members.map(mem =>
+        `<option value="${mem.id}">${mem.display_name}</option>`
+      ).join("");
+      html += `<div class="match-card edit-match-card" data-match-id="${m.match_id}">
         <div class="match-header">
           <span class="match-date">#${m.match_id}  ${date}</span>
-          <span class="match-type-badge">${m.match_type}人戦</span>
+          <select class="edit-match-type" onchange="updateMatchType(${m.match_id}, this.value)">
+            ${[3,4].map(t => `<option value="${t}"${t === m.match_type ? " selected" : ""}>${t}人戦</option>`).join("")}
+          </select>
         </div>`;
 
       m.players.forEach((p) => {
-        const memberOptions = members.map(mem =>
+        const pMemberOptions = members.map(mem =>
           `<option value="${mem.id}"${mem.id === p.member_id ? " selected" : ""}>${mem.display_name}</option>`
         ).join("");
         html += `<div class="player-row" data-result-id="${p.result_id}">
           <select class="edit-rank">
             ${[1,2,3,4].map(r => `<option value="${r}"${r === p.rank ? " selected" : ""}>${r}位</option>`).join("")}
           </select>
-          <select class="edit-member">${memberOptions}</select>
+          <select class="edit-member">${pMemberOptions}</select>
           <input class="edit-score" type="number" value="${p.score || 0}" step="100">
           <input class="edit-point" type="number" value="${p.point || 0}" step="0.1">
           <button class="btn-primary" onclick="saveRow(this)">保存</button>
+          <button class="btn-danger" onclick="deleteRow(this, ${p.result_id})">削除</button>
         </div>`;
       });
+
+      // プレイヤー追加ボタン
+      html += `<div class="form-row" style="margin-top:8px;">
+        <select class="add-member">${memberOptions}</select>
+        <button class="btn-primary" onclick="addPlayer(${m.match_id}, this)">＋ プレイヤー追加</button>
+      </div>`;
 
       html += "</div>";
     });
@@ -233,6 +245,45 @@ async function saveRow(btn) {
   } catch (e) {
     alert("保存に失敗しました: " + e.message);
   }
+}
+
+async function updateMatchType(matchId, matchType) {
+  try {
+    const res = await fetch(`${API_BASE}/api/match/${matchId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Edit-Token": getToken() },
+      body: JSON.stringify({ match_type: parseInt(matchType, 10) }),
+    });
+    if (res.status === 401) { alert("編集トークンが無効です。"); return; }
+    if (!res.ok) { alert("更新に失敗しました。"); return; }
+  } catch (e) { alert("更新に失敗しました: " + e.message); }
+}
+
+async function deleteRow(btn, resultId) {
+  if (!confirm("この結果を削除しますか？")) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/result/${resultId}`, {
+      method: "DELETE",
+      headers: { "X-Edit-Token": getToken() },
+    });
+    if (res.status === 401) { alert("編集トークンが無効です。"); return; }
+    if (res.ok) { btn.closest(".player-row").remove(); }
+  } catch (e) { alert("削除に失敗しました: " + e.message); }
+}
+
+async function addPlayer(matchId, btn) {
+  const row = btn.closest(".form-row");
+  const memberId = parseInt(row.querySelector(".add-member").value, 10);
+  try {
+    const res = await fetch(`${API_BASE}/api/match/${matchId}/result`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Edit-Token": getToken() },
+      body: JSON.stringify({ member_id: memberId, rank: 4, score: 0, point: 0 }),
+    });
+    if (res.status === 401) { alert("編集トークンが無効です。"); return; }
+    if (res.ok) { loadEdit(); }
+    else { alert("追加に失敗しました。"); }
+  } catch (e) { alert("追加に失敗しました: " + e.message); }
 }
 
 // ========== Init ==========
