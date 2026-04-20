@@ -102,6 +102,10 @@ class ResultCog(commands.Cog):
         image_bytes = await image_attachment.read()
         result = self.ocr.recognize(image_bytes)
 
+        # OCR名を既知メンバー名で補正
+        if result:
+            await self._fix_player_names(result)
+
         if result is None:
             embed = discord.Embed(
                 title="⚠️ 画像の認識に失敗しました",
@@ -137,6 +141,41 @@ class ResultCog(commands.Cog):
         msg_view = ConfirmView(self, msg.id)
         await msg.edit(view=msg_view)
 
+    @staticmethod
+    async def _find_member_by_name(name: str) -> dict | None:
+        """display_name で既存メンバーを検索"""
+        from database.connection import get_db
+        db = await get_db()
+        async with db.execute(
+            "SELECT id, discord_id, display_name FROM members WHERE display_name = ?",
+            (name,),
+        ) as cur:
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
+    async def _fix_player_names(self, result) -> None:
+        """OCRで認識した名前を、DB上の既知メンバー名と照合して補正する"""
+        from database.connection import get_db
+        db = await get_db()
+        async with db.execute("SELECT display_name FROM members") as cur:
+            known_names = [row[0] for row in await cur.fetchall()]
+
+        for p in result.players:
+            raw = p.player_name
+            # 完全一致ならそのまま
+            if raw in known_names:
+                continue
+            # 既知の名前が部分文字列として含まれているか
+            best_match = None
+            best_len = 0
+            for name in known_names:
+                if len(name) >= 2 and name in raw and len(name) > best_len:
+                    best_match = name
+                    best_len = len(name)
+            if best_match:
+                log.info("名前補正: %r → %r", raw, best_match)
+                p.player_name = best_match
+
     async def handle_confirm(self, interaction: discord.Interaction, message_id: int) -> None:
         result = self.pending_results.get(message_id)
         if result is None:
@@ -152,9 +191,13 @@ class ResultCog(commands.Cog):
 
         # DB保存
         for p in result.players:
-            # discord_id が不明なので、プレイヤー名をIDとして扱う
-            discord_id_key = str(p.discord_id) if p.discord_id else f"ocr:{p.player_name}"
-            member_id = await queries.upsert_member(discord_id_key, p.player_name)
+            # まず名前で既存メンバーを検索
+            existing = await self._find_member_by_name(p.player_name)
+            if existing:
+                member_id = existing["id"]
+            else:
+                discord_id_key = str(p.discord_id) if p.discord_id else f"ocr:{p.player_name}"
+                member_id = await queries.upsert_member(discord_id_key, p.player_name)
             await queries.add_match_player(match_id, member_id)
             await queries.save_match_result(
                 match_id, member_id, p.rank, p.score, p.point
