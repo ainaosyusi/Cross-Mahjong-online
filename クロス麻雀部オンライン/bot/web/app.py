@@ -118,11 +118,49 @@ def api_recent():
 @app.route("/api/members")
 def api_members():
     db = get_db()
-    rows = db.execute(
-        "SELECT id, discord_id, display_name FROM members ORDER BY display_name"
-    ).fetchall()
+    rows = db.execute("""
+        SELECT m.id, m.discord_id, m.display_name,
+               COUNT(r.id) AS result_count
+        FROM members m
+        LEFT JOIN match_results r ON r.member_id = m.id
+        GROUP BY m.id
+        ORDER BY m.display_name
+    """).fetchall()
     db.close()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/member/<int:member_id>", methods=["PATCH", "DELETE", "OPTIONS"])
+def api_member(member_id: int):
+    if request.method == "OPTIONS":
+        return ("", 204)
+    if not _require_edit_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    db = get_db()
+    if request.method == "PATCH":
+        data = request.get_json() or {}
+        if "display_name" in data:
+            db.execute(
+                "UPDATE members SET display_name = ? WHERE id = ?",
+                (data["display_name"], member_id),
+            )
+            db.commit()
+        db.close()
+        return jsonify({"ok": True})
+
+    # DELETE: 対戦データがある場合は削除を拒否
+    count = db.execute(
+        "SELECT COUNT(*) FROM match_results WHERE member_id = ?", (member_id,)
+    ).fetchone()[0]
+    if count > 0:
+        db.close()
+        return jsonify({"error": "このメンバーには対戦データがあるため削除できません"}), 400
+    db.execute("DELETE FROM match_players WHERE member_id = ?", (member_id,))
+    db.execute("DELETE FROM members WHERE id = ?", (member_id,))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/result/<int:result_id>", methods=["PATCH", "OPTIONS"])

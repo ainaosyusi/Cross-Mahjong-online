@@ -69,8 +69,8 @@ async function loadRanking() {
     let html =
       '<table class="ranking-table"><tr>' +
       '<th>#</th><th>プレイヤー</th><th>対戦</th>' +
-      '<th>平均順位</th><th>トップ率</th>' +
-      '<th>総Pt</th><th>平均Pt</th><th>総素点</th><th>平均素点</th><th>最高</th>' +
+      '<th>平均素点</th><th>平均順位</th><th>平均Pt</th>' +
+      '<th>トップ率</th><th>総素点</th><th>最高</th><th>総Pt</th>' +
       '</tr>';
 
     data.forEach((r, i) => {
@@ -81,13 +81,13 @@ async function loadRanking() {
         <td${cls}>${rank}</td>
         <td>${r.display_name}</td>
         <td>${r.game_count}</td>
-        <td>${r.avg_rank}</td>
-        <td>${r.top_rate}%</td>
-        <td>${fmt(r.total_point)}</td>
-        <td>${fmt(r.avg_point)}</td>
-        <td>${fmt(r.total_score)}</td>
         <td>${fmt(r.avg_score)}</td>
+        <td>${r.avg_rank}</td>
+        <td>${fmt(r.avg_point)}</td>
+        <td>${r.top_rate}%</td>
+        <td>${fmt(r.total_score)}</td>
         <td>${fmt(r.max_score)}</td>
+        <td>${fmt(r.total_point)}</td>
       </tr>`;
     });
 
@@ -165,6 +165,8 @@ async function loadEdit() {
     ]);
     const data = await recentRes.json();
     members = await membersRes.json();
+
+    renderMembers();
 
     if (!data.length) {
       el.innerHTML = '<div class="no-data">まだデータがありません</div>';
@@ -245,6 +247,63 @@ async function saveRow(btn) {
   } catch (e) {
     alert("保存に失敗しました: " + e.message);
   }
+}
+
+function renderMembers() {
+  const el = document.getElementById("members-content");
+  if (!el) return;
+  if (!members.length) {
+    el.innerHTML = '<div class="no-data">メンバーがいません</div>';
+    return;
+  }
+  let html = "";
+  members.forEach((m) => {
+    const disabled = m.result_count > 0 ? " disabled title=\"対戦データありのため削除不可\"" : "";
+    html += `<div class="form-row" data-member-id="${m.id}" style="margin-bottom:6px;">
+      <input class="edit-member-name" type="text" value="${m.display_name}" style="flex:1; min-width:160px;">
+      <span style="color:#81c784; font-size:0.85em;">対戦: ${m.result_count}</span>
+      <button class="btn-primary" onclick="renameMember(this, ${m.id})">保存</button>
+      <button class="btn-danger" onclick="deleteMember(this, ${m.id})"${disabled}>削除</button>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+async function renameMember(btn, memberId) {
+  const row = btn.closest(".form-row");
+  const newName = row.querySelector(".edit-member-name").value.trim();
+  if (!newName) { alert("名前を入力してください。"); return; }
+  try {
+    const res = await fetch(`${API_BASE}/api/member/${memberId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Edit-Token": getToken() },
+      body: JSON.stringify({ display_name: newName }),
+    });
+    if (res.status === 401) { alert("編集トークンが無効です。"); return; }
+    if (res.ok) {
+      btn.textContent = "保存済";
+      setTimeout(() => (btn.textContent = "保存"), 2000);
+      loadEdit();
+    } else { alert("保存に失敗しました。"); }
+  } catch (e) { alert("保存に失敗しました: " + e.message); }
+}
+
+async function deleteMember(btn, memberId) {
+  if (!confirm("このメンバーを削除しますか？")) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/member/${memberId}`, {
+      method: "DELETE",
+      headers: { "X-Edit-Token": getToken() },
+    });
+    if (res.status === 401) { alert("編集トークンが無効です。"); return; }
+    if (res.ok) {
+      btn.closest(".form-row").remove();
+      loadEdit();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "削除に失敗しました。");
+    }
+  } catch (e) { alert("削除に失敗しました: " + e.message); }
 }
 
 async function updateMatchType(matchId, matchType) {
